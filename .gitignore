@@ -1,0 +1,8 @@
+*.mypy*
+__pycache__
+.Rproj.user
+*.egg*
+*.Rproj
+.DS_Store
+.env
+.vscode

@@ -1,0 +1,13 @@
+numpy
+scipy
+pandas
+pyarrow
+scikit-learn
+matplotlib
+seaborn
+openpyxl
+python-dotenv
+tqdm
+binit
+trace-minder @ git+https://github.com/Ruairi-osul/trace-minder.git
+calcium-clear @ git+https://github.com/Ruairi-osul/calcium-clear.git
