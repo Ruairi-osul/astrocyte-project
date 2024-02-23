@@ -77,7 +77,7 @@ class SessionData:
         Returns:
             pd.DataFrame: cell properties for all neurons in session
         """
-        
+
         return self.loader.load_cell_props().copy()
 
     @cached_property
@@ -173,7 +173,7 @@ class GroupSessionData:
     def df_mice(self) -> pd.DataFrame:
         """
         Get dataframe of mice in the group.
-        
+
         Returns:
             pd.DataFrame: mice in group
         """
