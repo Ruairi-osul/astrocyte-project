@@ -11,3 +11,4 @@ tqdm
 binit
 trace-minder @ git+https://github.com/Ruairi-osul/trace-minder.git
 calcium-clear @ git+https://github.com/Ruairi-osul/calcium-clear.git
+cc_blocks @ git+https://github.com/Ruairi-osul/cc-blocks.git
