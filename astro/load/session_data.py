@@ -5,9 +5,10 @@ from functools import cached_property
 
 
 class SessionData:
-    """Represents data from a single session.
+    """
+    Object containing data for a single session.
 
-    Attributes:
+    Methods and Attributes:
         df_traces: traces for all neurons in session
         df_block_starts: block start times for all blocks in session
         df_mice: mice in session
@@ -16,6 +17,11 @@ class SessionData:
     """
 
     def __init__(self, loader: Loader, session_name: str | None = None) -> None:
+        """
+        Args:
+            loader (Loader): loader containing loading and preprocessing configuration.
+            session_name (str, optional): Name of the session. Must be specified if loader does not have a session_name specified. Defaults to None.
+        """
         if session_name is not None:
             loader.session_name = session_name
         else:
@@ -28,32 +34,63 @@ class SessionData:
 
     @cached_property
     def df_traces(self) -> pd.DataFrame:
+        """
+        Traces for all neurons in session in wide format. Columns = ['time'] + neuron_ids.
+
+        Returns:
+            pd.DataFrame: traces for all neurons in session
+        """
         return self.loader.load_traces().copy()
 
     def df_block_starts(
         self, block_group: str = None, block_name: str | None = None
     ) -> pd.DataFrame:
+        """
+        A dataframe containing block start times for all blocks in the session.
+
+        Args:
+            block_group (str, optional): Group name for the block. Defaults to None.
+            block_name (str, optional): Name of the block. Defaults to None.
+
+        Returns:
+            pd.DataFrame: block start times for all blocks in session
+        """
         return self.loader.load_blockstarts(
             block_group=block_group, block_name=block_name
         ).copy()
 
     @cached_property
     def df_mice(self) -> pd.DataFrame:
+        """
+        Get dataframe of mice in the experiment. Columns are ['mouse_name', 'group'].
+
+        Returns:
+            pd.DataFrame: mice in session
+        """
         return self.loader.load_mice().copy()
 
     @cached_property
     def df_cell_props(self) -> pd.DataFrame:
+        """
+        Get dataframe of cell properties for all neurons in the session. Columns include ["cell_id", "mouse_name", "centroid_x" "centroid_y"]
+
+        Returns:
+            pd.DataFrame: cell properties for all neurons in session
+        """
+        
         return self.loader.load_cell_props().copy()
 
     @cached_property
     def df_neurons(self) -> pd.DataFrame:
-        return self.loader.load_neurons().copy()
+        """
+        Get a dataframe of the neurons in the session. Columns include ['cell_id', 'mouse_name']
 
-    def flush_cache(self) -> None:
-        """Flushes all cached properties."""
-        for prop in self.__dict__:
-            if isinstance(prop, cached_property):
-                prop.flush_cache()
+        Returns:
+            pd.DataFrame: neurons in session
+        """
+        df_neurons_all = self.loader.load_neurons()
+        neurons_in_session = self.df_cell_props["cell_id"].unique()
+        return df_neurons_all[df_neurons_all["cell_id"].isin(neurons_in_session)].copy()
 
 
 class GroupSessionData:
@@ -74,31 +111,40 @@ class GroupSessionData:
 
     def __init__(
         self,
-        group: str,
         loader: Loader,
+        group: str,
         group_splitter: GroupSplitter,
+        session_name: str | None = None,
         block_starts_mouse_col: str = "mouse_name",
     ) -> None:
         """Initializes GroupSessionData.
 
         Args:
-            group: group name
             loader: loader for session, must not have a session_name specified
+            group: group name
             group_splitter: group splitter for session
+            session_name: session name
             block_starts_mouse_col: column name in block_starts for mouse name
         """
         self.group = group
+        self.session_name = session_name
         self.loader = loader
         self.group_splitter = group_splitter
         self.block_starts_mouse_col = block_starts_mouse_col
 
-        self.session_data = SessionData(loader=loader)
+        self.session_data = SessionData(loader=loader, session_name=session_name)
 
         self.group_splitter.df_mice = self.session_data.df_mice
         self.group_splitter.df_neurons = self.session_data.df_neurons
 
     @cached_property
     def df_traces(self) -> pd.DataFrame:
+        """
+        Traces for all neurons in group in wide format. Columns = ['time'] + neuron_ids.
+
+        Returns:
+            pd.DataFrame: traces for all neurons in group
+        """
         df = self.session_data.df_traces
         trace_dict = self.group_splitter.traces_by_group(df_traces=df)
         return trace_dict[self.group]
@@ -106,6 +152,16 @@ class GroupSessionData:
     def df_block_starts(
         self, block_name: str | None = None, block_group: str | None = None
     ) -> pd.DataFrame:
+        """
+        Get block start time dataframe for the group in a particular session.
+
+        Args:
+            block_name (str, optional): Name of a specific block. Defaults to None.
+            block_group (str, optional): Name for the set of blocks. Defaults to None.
+
+        Returns:
+            pd.DataFrame: block start times for all blocks in group
+        """
         mice = self.group_splitter.mice_by_group()[self.group]
         df_block_starts = self.session_data.df_block_starts(
             block_group=block_group, block_name=block_name
@@ -115,6 +171,12 @@ class GroupSessionData:
 
     @cached_property
     def df_mice(self) -> pd.DataFrame:
+        """
+        Get dataframe of mice in the group.
+        
+        Returns:
+            pd.DataFrame: mice in group
+        """
         mice = self.group_splitter.mice_by_group()[self.group]
         mouse_col = self.group_splitter.df_mice_mouse_col
         df_mice = self.session_data.df_mice.loc[lambda x: x[mouse_col].isin(mice)]
@@ -123,6 +185,12 @@ class GroupSessionData:
 
     @cached_property
     def df_cell_props(self) -> pd.DataFrame:
+        """
+        Get dataframe of cell properties for all neurons in the group.
+
+        Returns:
+            pd.DataFrame: cell properties for all neurons in group
+        """
         neurons = self.group_splitter.neurons_by_group()[self.group]
         neurons_col = self.group_splitter.df_neurons_neuron_col
         df_cell_props = self.session_data.df_cell_props.loc[
@@ -133,6 +201,12 @@ class GroupSessionData:
 
     @cached_property
     def df_neurons(self) -> pd.DataFrame:
+        """
+        Get a dataframe of the neurons in the group in long format.
+
+        Returns:
+            pd.DataFrame: neurons in group
+        """
         neurons = self.group_splitter.neurons_by_group()[self.group]
         neurons_col = self.group_splitter.df_neurons_neuron_col
         df_neurons = self.session_data.df_neurons.loc[

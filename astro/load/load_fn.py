@@ -1,9 +1,7 @@
 from pathlib import Path
 import pandas as pd
-import numpy as np
 from typing import Optional
 import pickle
-from astro.preprocess import Preprocessor
 from cc_blocks.block_collections import GroupedSessionBlocks
 
 
@@ -82,14 +80,20 @@ def load_blocks(data_dir: Path, session_name: str) -> GroupedSessionBlocks:
 
 
 def load_block_timeseries(
-    data_dir: Path, session_name: str, sampling_rate: float
+    data_dir: Path,
+    session_name: str,
+    block_group: str | None = None,
+    block_name: str | None = None,
+    sampling_rate: float = 0.1,
 ) -> pd.DataFrame:
     """Load blocks and get blocks timeseries dataframe from data_dir/session_name"""
 
     _verify_data_dir(data_dir)
     _verify_session_name(session_name)
     session_blocks = load_blocks(data_dir, session_name)
-    block_timeseries = session_blocks.get_binary_block_time_series()
+    block_timeseries = session_blocks.get_binary_block_time_series(
+        sampling_rate=sampling_rate, block_group=block_group, block_name=block_name
+    )
     return block_timeseries
 
 
