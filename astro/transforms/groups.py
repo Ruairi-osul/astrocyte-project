@@ -330,7 +330,7 @@ class GroupSplitter:
         self.df_neurons_mouse_col = df_neurons_mouse_col
         self.df_neurons_neuron_col = df_neurons_neuron_col
         self.df_traces_time_col = df_traces_time_col
-        
+
         self.map_int_to_str = map_int_to_str
         self.permute_neurons = permute_neurons
         self.permute_mice = permute_mice
@@ -471,7 +471,7 @@ class GroupSplitter:
                 equalize_neuron_numbers=self.equalize_neuron_numbers,
             )
         return self._neuron_mouse_mapping
-    
+
     def refresh_mappings(self):
         self._mouse_group_mapping = None
         self._neuron_group_mapping = None
@@ -504,7 +504,6 @@ class GroupSplitter:
             trace_dict[group] = df_traces[cols]
         return trace_dict
 
-
     def traces_by_mouse(
         self,
         df_traces: pd.DataFrame,
@@ -530,7 +529,7 @@ class GroupSplitter:
                 cols = [df_traces_time_col] + cols
             trace_dict[mouse] = df_traces[cols]
         return trace_dict
-    
+
     def traces_by_group_long(
         self,
         df_traces_long: pd.DataFrame,
@@ -551,8 +550,14 @@ class GroupSplitter:
             df_traces_long_neuron_col = self.df_neurons_neuron_col
 
         neuron_group_mapper = self.neurons_by_group
-        neurons_by_group_inv = {neuron: group for group, neurons in neuron_group_mapper.items() for neuron in neurons}
+        neurons_by_group_inv = {
+            neuron: group
+            for group, neurons in neuron_group_mapper.items()
+            for neuron in neurons
+        }
 
-        df_traces_long[self.df_mice_group_col] = df_traces_long[df_traces_long_neuron_col].map(neurons_by_group_inv)
+        df_traces_long[self.df_mice_group_col] = df_traces_long[
+            df_traces_long_neuron_col
+        ].map(neurons_by_group_inv)
 
         return df_traces_long
