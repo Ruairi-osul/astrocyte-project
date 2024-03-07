@@ -134,8 +134,8 @@ class GroupSessionData:
 
         self.session_data = SessionData(loader=loader, session_name=session_name)
 
-        self.group_splitter.df_mice = self.session_data.df_mice
-        self.group_splitter.df_neurons = self.session_data.df_neurons
+        self.group_splitter.set_df_mice(self.session_data.df_mice)
+        self.group_splitter.set_df_neurons(self.session_data.df_neurons)
 
     @cached_property
     def df_traces(self) -> pd.DataFrame:
@@ -162,7 +162,7 @@ class GroupSessionData:
         Returns:
             pd.DataFrame: block start times for all blocks in group
         """
-        mice = self.group_splitter.mice_by_group()[self.group]
+        mice = self.group_splitter.mice_by_group[self.group]
         df_block_starts = self.session_data.df_block_starts(
             block_group=block_group, block_name=block_name
         ).loc[lambda x: x[self.block_starts_mouse_col].isin(mice)]
@@ -177,7 +177,7 @@ class GroupSessionData:
         Returns:
             pd.DataFrame: mice in group
         """
-        mice = self.group_splitter.mice_by_group()[self.group]
+        mice = self.group_splitter.mice_by_group[self.group]
         mouse_col = self.group_splitter.df_mice_mouse_col
         df_mice = self.session_data.df_mice.loc[lambda x: x[mouse_col].isin(mice)]
         df_mice = df_mice.reset_index(drop=True).copy()
@@ -191,7 +191,7 @@ class GroupSessionData:
         Returns:
             pd.DataFrame: cell properties for all neurons in group
         """
-        neurons = self.group_splitter.neurons_by_group()[self.group]
+        neurons = self.group_splitter.neurons_by_group[self.group]
         neurons_col = self.group_splitter.df_neurons_neuron_col
         df_cell_props = self.session_data.df_cell_props.loc[
             lambda x: x[neurons_col].astype(str).isin(neurons)
@@ -207,7 +207,7 @@ class GroupSessionData:
         Returns:
             pd.DataFrame: neurons in group
         """
-        neurons = self.group_splitter.neurons_by_group()[self.group]
+        neurons = self.group_splitter.neurons_by_group[self.group]
         neurons_col = self.group_splitter.df_neurons_neuron_col
         df_neurons = self.session_data.df_neurons.loc[
             lambda x: x[neurons_col].astype(str).isin(neurons)
