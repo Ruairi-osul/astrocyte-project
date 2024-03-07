@@ -8,6 +8,9 @@ from .load_fn import (
     load_blockstarts,
     load_master_cellset,
 )
+from .config import DataConfig
+from .dataloaders import DataLoader, GroupDataloader
+
 
 __all__ = [
     "Loader",
@@ -19,4 +22,7 @@ __all__ = [
     "load_blocks",
     "load_blockstarts",
     "load_master_cellset",
+    "DataConfig",
+    "DataLoader",
+    "GroupDataloader",
 ]
