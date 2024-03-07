@@ -3,6 +3,53 @@ from typing import Optional, Dict, List
 import numpy as np
 
 
+def _permute_dict_arrays(input_dict: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+    """
+    Permute the elements of a dictionary of arrays. Maintains the original array sizes.
+
+    Args:
+        input_dict (dict[str, np.ndarray]): Input dictionary with arrays.
+
+    Returns:
+        dict[str, np.ndarray]: Dictionary with permuted arrays.
+    """
+    concatenated_array = np.concatenate([v for v in input_dict.values()])
+    permuted_array = np.random.permutation(concatenated_array)
+    idx = 0
+    for key, value in input_dict.items():
+        next_idx = idx + len(value)
+        input_dict[key] = permuted_array[idx:next_idx]
+        idx = next_idx
+
+    return input_dict
+
+
+def _resize_dict_arrays(
+    input_dict: dict[str, np.ndarray], random_sample: bool = False
+) -> dict[str, np.ndarray]:
+    """
+    Resize the arrays in a dictionary of arrays to the minimum size. Maintains the original array sizes.
+
+    Args:
+        input_dict (dict[str, np.ndarray]): Input dictionary with arrays.
+        random_sample (bool, optional): Whether to randomly sample the arrays. Defaults to False.
+
+    Returns:
+        dict[str, np.ndarray]: Dictionary with resized arrays.
+    """
+    min_size = min(len(v) for v in input_dict.values())
+    output_dict = {}
+
+    for key, value in input_dict.items():
+        if random_sample:
+            sampled_indices = np.random.choice(len(value), min_size, replace=False)
+            output_dict[key] = value[sampled_indices]
+        else:
+            output_dict[key] = value[:min_size]
+
+    return output_dict
+
+
 def mice_by_group(
     df_mice: pd.DataFrame,
     df_mice_group_col: str = "group",
@@ -70,16 +117,11 @@ def neurons_by_group(
         neurons_by_group[group] = df_group[df_neurons_neuron_col].unique()
 
     if equalize_neuron_numbers:
-        min_neurons = min([len(neurons) for neurons in neurons_by_group.values()])
-        for group in neurons_by_group:
-            np.random.shuffle(neurons_by_group[group])
-            neurons_by_group[group] = neurons_by_group[group][:min_neurons]
+        neurons_by_group = _resize_dict_arrays(neurons_by_group, random_sample=True)
 
     if permute_neurons:
-        neurons = np.concatenate(list(neurons_by_group.values()))
-        np.random.shuffle(neurons)
-        for group in neurons_by_group:
-            neurons_by_group[group] = neurons[: len(neurons_by_group[group])]
+        neurons_by_group = _permute_dict_arrays(neurons_by_group)
+
     if map_int_to_str:
         neurons_by_group = {
             group: [str(n) for n in neurons]
@@ -120,11 +162,9 @@ def neurons_by_mouse(
         if map_int_to_str:
             mouse_neurons = mouse_neurons.astype(str)
         by_mouse[mouse] = np.asarray(mouse_neurons)
+
     if equalize_neuron_numbers:
-        min_neurons = min([len(neurons) for neurons in by_mouse.values()])
-        for mouse in by_mouse:
-            np.random.shuffle(by_mouse[mouse])
-            by_mouse[mouse] = by_mouse[mouse][:min_neurons]
+        by_mouse = _resize_dict_arrays(by_mouse, random_sample=True)
 
     if map_int_to_str:
         by_mouse = {
