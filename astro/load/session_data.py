@@ -1,7 +1,6 @@
 from .loader import Loader
 import pandas as pd
 from astro.transforms import GroupSplitter
-from functools import cached_property
 
 
 class SessionData:
@@ -16,7 +15,12 @@ class SessionData:
         df_neurons: neurons in session
     """
 
-    def __init__(self, loader: Loader, session_name: str | None = None) -> None:
+    def __init__(
+        self,
+        loader: Loader,
+        session_name: str | None = None,
+        group_splitter: GroupSplitter | None = None,
+    ) -> None:
         """
         Args:
             loader (Loader): loader containing loading and preprocessing configuration.
@@ -27,12 +31,13 @@ class SessionData:
         else:
             self._check_loader_session(loader)
         self.loader = loader
+        self.group_splitter = group_splitter
 
     def _check_loader_session(self, loader: Loader) -> None:
         if loader.session_name is None:
             raise ValueError("loader must not have a session_name specified")
 
-    @cached_property
+    @property
     def df_traces(self) -> pd.DataFrame:
         """
         Traces for all neurons in session in wide format. Columns = ['time'] + neuron_ids.
@@ -40,7 +45,15 @@ class SessionData:
         Returns:
             pd.DataFrame: traces for all neurons in session
         """
-        return self.loader.load_traces().copy()
+        df_traces = self.loader.load_traces().copy()
+        if self.group_splitter is not None:
+            neurons_in_session = self.group_splitter.neurons.astype(str)
+            time_col = self.group_splitter.df_traces_time_col
+            cols = [time_col] + [
+                c for c in df_traces.columns if c in neurons_in_session
+            ]
+            df_traces = df_traces.loc[:, cols]
+        return df_traces
 
     def df_block_starts(
         self, block_group: str = None, block_name: str | None = None
@@ -55,11 +68,19 @@ class SessionData:
         Returns:
             pd.DataFrame: block start times for all blocks in session
         """
-        return self.loader.load_blockstarts(
+        df_block_starts = self.loader.load_blockstarts(
             block_group=block_group, block_name=block_name
         ).copy()
 
-    @cached_property
+        if self.group_splitter is not None:
+            mice_in_session = self.group_splitter.mice
+            mouse_col = self.group_splitter.df_mice_mouse_col
+            df_block_starts = df_block_starts.loc[
+                lambda x: x[mouse_col].isin(mice_in_session)
+            ]
+        return df_block_starts
+
+    @property
     def df_mice(self) -> pd.DataFrame:
         """
         Get dataframe of mice in the experiment. Columns are ['mouse_name', 'group'].
@@ -67,9 +88,14 @@ class SessionData:
         Returns:
             pd.DataFrame: mice in session
         """
-        return self.loader.load_mice().copy()
+        df_mice = self.loader.load_mice().copy()
+        if self.group_splitter is not None:
+            mice_in_session = self.group_splitter.mice
+            mouse_col = self.group_splitter.df_mice_mouse_col
+            df_mice = df_mice.loc[lambda x: x[mouse_col].isin(mice_in_session)]
+        return df_mice
 
-    @cached_property
+    @property
     def df_cell_props(self) -> pd.DataFrame:
         """
         Get dataframe of cell properties for all neurons in the session. Columns include ["cell_id", "mouse_name", "centroid_x" "centroid_y"]
@@ -78,9 +104,16 @@ class SessionData:
             pd.DataFrame: cell properties for all neurons in session
         """
 
-        return self.loader.load_cell_props().copy()
+        df_cell_props = self.loader.load_cell_props().copy()
+        if self.group_splitter is not None:
+            neurons_in_session = self.group_splitter.neurons.astype(str)
+            neurons_col = self.group_splitter.df_neurons_neuron_col
+            df_cell_props = df_cell_props.loc[
+                lambda x: x[neurons_col].astype(str).isin(neurons_in_session)
+            ]
+        return df_cell_props
 
-    @cached_property
+    @property
     def df_neurons(self) -> pd.DataFrame:
         """
         Get a dataframe of the neurons in the session. Columns include ['cell_id', 'mouse_name']
@@ -91,6 +124,45 @@ class SessionData:
         df_neurons_all = self.loader.load_neurons()
         neurons_in_session = self.df_cell_props["cell_id"].unique()
         return df_neurons_all[df_neurons_all["cell_id"].isin(neurons_in_session)].copy()
+
+    @property
+    def traces_by_group(self) -> dict[str, pd.DataFrame]:
+        """
+        Get a dict of traces for all groups in a session.
+
+        Returns:
+            dict[str, pd.DataFrame]: traces for all groups in session
+        """
+        if self.group_splitter is None:
+            raise ValueError("group_splitter is required for traces_by_group")
+        return self.group_splitter.traces_by_group(df_traces=self.df_traces)
+
+    def df_block_starts_by_group(
+        self,
+        block_group: str | None = None,
+        block_name: str | None = None,
+        mouse_col: str = "mouse_name",
+    ) -> dict[str, pd.DataFrame]:
+        """
+        Get block start time dataframe for all groups in a session.
+
+        Args:
+            block_group (str, optional): Name of the block group. Defaults to None.
+            block_name (str, optional): Name of the block. Defaults to None.
+
+        Returns:
+            dict[str, pd.DataFrame]: block start times for all groups in session
+        """
+        if self.group_splitter is None:
+            raise ValueError("group_splitter is required for df_block_starts_by_group")
+        df_block_starts = self.df_block_starts(
+            block_group=block_group, block_name=block_name
+        )
+        mice_by_group = self.group_splitter.mice_by_group
+        return {
+            group: df_block_starts.loc[lambda x: x[mouse_col].isin(mice)]
+            for group, mice in mice_by_group.items()
+        }
 
 
 class GroupSessionData:
@@ -134,10 +206,7 @@ class GroupSessionData:
 
         self.session_data = SessionData(loader=loader, session_name=session_name)
 
-        self.group_splitter.set_df_mice(self.session_data.df_mice)
-        self.group_splitter.set_df_neurons(self.session_data.df_neurons)
-
-    @cached_property
+    @property
     def df_traces(self) -> pd.DataFrame:
         """
         Traces for all neurons in group in wide format. Columns = ['time'] + neuron_ids.
@@ -169,7 +238,7 @@ class GroupSessionData:
         df_block_starts = df_block_starts.reset_index(drop=True).copy()
         return df_block_starts
 
-    @cached_property
+    @property
     def df_mice(self) -> pd.DataFrame:
         """
         Get dataframe of mice in the group.
@@ -183,7 +252,7 @@ class GroupSessionData:
         df_mice = df_mice.reset_index(drop=True).copy()
         return df_mice
 
-    @cached_property
+    @property
     def df_cell_props(self) -> pd.DataFrame:
         """
         Get dataframe of cell properties for all neurons in the group.
@@ -199,7 +268,7 @@ class GroupSessionData:
         df_cell_props = df_cell_props.reset_index(drop=True).copy()
         return df_cell_props
 
-    @cached_property
+    @property
     def df_neurons(self) -> pd.DataFrame:
         """
         Get a dataframe of the neurons in the group in long format.
