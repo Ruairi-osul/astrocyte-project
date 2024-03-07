@@ -7,6 +7,7 @@ def mice_by_group(
     df_mice: pd.DataFrame,
     df_mice_group_col: str = "group",
     df_mice_mouse_col: str = "mouse_name",
+    permute_mice: bool = False,
 ) -> Dict[str, np.ndarray]:
     """
     Get a dictionary with groups as keys and mice in each group as values.
@@ -15,10 +16,15 @@ def mice_by_group(
         df_mice (pd.DataFrame): Dataframe of mice metadata.
         df_mice_group_col (str, optional): Name of the column with group information. Defaults to "group".
         df_mice_mouse_col (str, optional): Name of the column with mouse names. Defaults to "mouse_name".
+        permute_mice (bool, optional): Whether to permute mice. Defaults to False.
 
     Returns:
         Dict[str, np.ndarray]: Dictionary with groups as keys and mice in each group as values.
     """
+    if permute_mice:
+        df_mice[df_mice_group_col] = np.random.permutation(
+            df_mice[df_mice_group_col].values
+        )
     mice_by_group = (
         df_mice.groupby(df_mice_group_col)[df_mice_mouse_col].unique().to_dict()
     )
@@ -33,6 +39,8 @@ def neurons_by_group(
     df_neurons_mouse_col: str = "mouse_name",
     df_neurons_neuron_col: str = "cell_id",
     map_int_to_str: bool = True,
+    permute_neurons: bool = False,
+    equalize_neuron_numbers: bool = False,
 ) -> Dict[str, np.ndarray]:
     """
     Get a dictionary with groups as keys and neurons in each group as values.
@@ -45,6 +53,8 @@ def neurons_by_group(
         df_neurons_mouse_col (str, optional): Name of the column with mouse names in neuron dataframe. Defaults to "mouse_name".
         df_neurons_neuron_col (str, optional): Name of the column with neuron names. Defaults to "cell_id".
         map_int_to_str (bool, optional): Whether to map neuron names to strings. Defaults to True.
+        permute_neurons (bool, optional): Whether to permute neuron groups. Defaults to False.
+        equalize_neuron_numbers (bool, optional): Whether to equalize neuron numbers. Defaults to False.
 
     Returns:
         Dict[str, np.ndarray]: Dictionary with groups as keys and neurons in each group as values.
@@ -58,6 +68,18 @@ def neurons_by_group(
     for group, mice in mice_dict.items():
         df_group = df_neurons[df_neurons[df_neurons_mouse_col].isin(mice)]
         neurons_by_group[group] = df_group[df_neurons_neuron_col].unique()
+
+    if equalize_neuron_numbers:
+        min_neurons = min([len(neurons) for neurons in neurons_by_group.values()])
+        for group in neurons_by_group:
+            np.random.shuffle(neurons_by_group[group])
+            neurons_by_group[group] = neurons_by_group[group][:min_neurons]
+
+    if permute_neurons:
+        neurons = np.concatenate(list(neurons_by_group.values()))
+        np.random.shuffle(neurons)
+        for group in neurons_by_group:
+            neurons_by_group[group] = neurons[: len(neurons_by_group[group])]
     if map_int_to_str:
         neurons_by_group = {
             group: [str(n) for n in neurons]
@@ -73,6 +95,7 @@ def neurons_by_mouse(
     df_neurons_mouse_col: str = "mouse_name",
     df_neurons_neuron_col: str = "cell_id",
     map_int_to_str: bool = True,
+    equalize_neuron_numbers: bool = False,
 ) -> Dict[str, np.ndarray]:
     """
     Get a dictionary with mouse names as keys and neurons in each mouse as values.
@@ -84,6 +107,7 @@ def neurons_by_mouse(
         df_neurons_mouse_col (str, optional): Name of the column with mouse names in neuron dataframe. Defaults to "mouse_name".
         df_neurons_neuron_col (str, optional): Name of the column with neuron names. Defaults to "cell_id".
         map_int_to_str (bool, optional): Whether to map neuron names to strings. Defaults to True.
+        equalize_neuron_numbers (bool, optional): Whether to equalize neuron numbers. Defaults to False.
 
     Returns:
         Dict[str, np.ndarray]: Dictionary with mouse names as keys and neurons in each mouse as values.
@@ -96,6 +120,16 @@ def neurons_by_mouse(
         if map_int_to_str:
             mouse_neurons = mouse_neurons.astype(str)
         by_mouse[mouse] = np.asarray(mouse_neurons)
+    if equalize_neuron_numbers:
+        min_neurons = min([len(neurons) for neurons in by_mouse.values()])
+        for mouse in by_mouse:
+            np.random.shuffle(by_mouse[mouse])
+            by_mouse[mouse] = by_mouse[mouse][:min_neurons]
+
+    if map_int_to_str:
+        by_mouse = {
+            mouse: [str(n) for n in neurons] for mouse, neurons in by_mouse.items()
+        }
 
     return by_mouse
 
@@ -109,10 +143,12 @@ def traces_by_group(
     df_neurons_mouse_col: str = "mouse_name",
     df_traces_time_col: Optional[str] = "time",
     map_int_to_str: bool = True,
+    permute_neurons: bool = False,
+    equalize_neuron_numbers: bool = False,
 ) -> Dict[str, pd.DataFrame]:
     """
     Get a dictionary with groups as keys and traces in each group as values.
-    
+
     Args:
         df_traces (pd.DataFrame): Dataframe of traces.
         df_neurons (pd.DataFrame): Dataframe of neuron metadata.
@@ -133,6 +169,8 @@ def traces_by_group(
         df_mice_mouse_col=df_mice_mouse_col,
         df_neurons_mouse_col=df_neurons_mouse_col,
         map_int_to_str=map_int_to_str,
+        permute_neurons=permute_neurons,
+        equalize_neuron_numbers=equalize_neuron_numbers,
     )
     traces_by_group = {}
     for group, neurons in neurons_dict.items():
@@ -154,10 +192,12 @@ def traces_by_group_long(
     df_neurons_mouse_col: str = "mouse_name",
     df_neurons_neuron_col: str = "cell_id",
     df_traces_long_neuron_col: str = "cell_id",
+    permute_neurons: bool = False,
+    equalize_neuron_numbers: bool = False,
 ) -> pd.DataFrame:
     """
     Add group information to a long-format dataframe of traces.
-    
+
     Args:
         df_traces_long (pd.DataFrame): Long-format dataframe of traces.
         df_neurons (pd.DataFrame): Dataframe of neuron metadata.
@@ -167,10 +207,25 @@ def traces_by_group_long(
         df_neurons_mouse_col (str, optional): Name of the column with mouse names in neuron dataframe. Defaults to "mouse_name".
         df_neurons_neuron_col (str, optional): Name of the column with neuron names. Defaults to "cell_id".
         df_traces_long_neuron_col (str, optional): Name of the column with neuron names in long-format dataframe. Defaults to "cell_id".
+        permute_neurons (bool, optional): Whether to permute neuron groups. Defaults to False.
+        equalize_neuron_numbers (bool, optional): Whether to equalize neuron numbers. Defaults to False.
 
     Returns:
         pd.DataFrame: Long-format dataframe of traces with group information.
     """
+    if permute_neurons:
+        df_neurons[df_mice_group_col] = np.random.permutation(
+            df_neurons[df_mice_group_col].values
+        )
+    if equalize_neuron_numbers:
+        min_neurons = min(
+            df_neurons.groupby([df_mice_group_col, df_mice_mouse_col])[
+                df_neurons_neuron_col
+            ].count()
+        )
+        df_neurons = df_neurons.groupby([df_mice_group_col, df_mice_mouse_col]).apply(
+            lambda x: x.sample(min_neurons)
+        )
     df_neuron_groups = pd.merge(
         df_neurons,
         df_mice[[df_mice_mouse_col, df_mice_group_col]].drop_duplicates(),
@@ -193,16 +248,19 @@ def traces_by_mouse(
     df_neurons_neuron_col: str = "cell_id",
     df_traces_time_col: Optional[str] = "time",
     map_int_to_str: bool = True,
+    permute_neurons: bool = False,
 ) -> Dict[str, pd.DataFrame]:
     """
     Get a dictionary with mouse names as keys and traces in each mouse as values.
-    
+
     Args:
         df_traces (pd.DataFrame): Dataframe of traces.
         df_neurons (pd.DataFrame): Dataframe of neuron metadata.
         df_neurons_mouse_col (str, optional): Name of the column with mouse names in neuron dataframe. Defaults to "mouse_name".
         df_neurons_neuron_col (str, optional): Name of the column with neuron names. Defaults to "cell_id".
         df_traces_time_col (Optional[str], optional): Name of the column with time information in traces dataframe
+        map_int_to_str (bool, optional): Whether to map neuron names to strings. Defaults to True.
+        permute_neurons (bool, optional): Whether to permute neuron groups. Defaults to False.
 
     Returns:
         Dict[str, pd.DataFrame]: Dictionary with mouse names as keys and traces in each mouse as values.
@@ -222,13 +280,21 @@ def traces_by_mouse(
 
         traces_by_mouse[mouse] = df_traces[cols]
 
+    if permute_neurons:
+        actual_keys = list(traces_by_mouse.keys())
+        random_keys = np.random.permutation(list(traces_by_mouse.keys()))
+        traces_by_mouse = {
+            random_key: traces_by_mouse[actual_key]
+            for actual_key, random_key in zip(actual_keys, random_keys)
+        }
+
     return traces_by_mouse
 
 
 class GroupSplitter:
     """
     Class to split data by groups and mouse names.
-    
+
     Args:
         df_mice (Optional[pd.DataFrame], optional): Dataframe of mice metadata. Defaults to None.
         df_neurons (Optional[pd.DataFrame], optional): Dataframe of neuron metadata. Defaults to None.
@@ -241,6 +307,7 @@ class GroupSplitter:
         excluded_groups (Optional[List[str]], optional): List of groups to exclude. Defaults to None.
         map_int_to_str (bool, optional): Whether to map neuron names to strings. Defaults to True.
     """
+
     def __init__(
         self,
         df_mice: Optional[pd.DataFrame] = None,
@@ -253,6 +320,9 @@ class GroupSplitter:
         df_traces_long_neuron_col: str = "cell_id",
         excluded_groups: Optional[List[str]] = None,
         map_int_to_str: bool = True,
+        permute_neurons: bool = False,
+        permute_mice: bool = False,
+        equalize_neuron_numbers: bool = False,
     ):
         self.df_mice = df_mice
         self.df_neurons = df_neurons
@@ -263,6 +333,9 @@ class GroupSplitter:
         self.df_traces_time_col = df_traces_time_col
         self.df_traces_long_neuron_col = df_traces_long_neuron_col
         self.map_int_to_str = map_int_to_str
+        self.permute_neurons = permute_neurons
+        self.permute_mice = permute_mice
+        self.equalize_neuron_numbers = equalize_neuron_numbers
 
         if excluded_groups is None:
             excluded_groups = []
@@ -291,7 +364,7 @@ class GroupSplitter:
     def mice(self):
         """
         Get unique mouse names.
-        
+
         Returns:
             np.ndarray: Unique mouse names.
         """
@@ -306,7 +379,7 @@ class GroupSplitter:
     ) -> Dict[str, np.ndarray]:
         """
         Get a dictionary with groups as keys and mice in each group as values.
-        
+
         Args:
             df_mice (Optional[pd.DataFrame], optional): Dataframe of mice metadata. Defaults to None.
         """
@@ -320,6 +393,7 @@ class GroupSplitter:
             df_mice=df_mice,
             df_mice_group_col=self.df_mice_group_col,
             df_mice_mouse_col=self.df_mice_mouse_col,
+            permute_mice=self.permute_mice,
         )
 
     def neurons_by_group(
@@ -329,11 +403,11 @@ class GroupSplitter:
     ) -> Dict[str, np.ndarray]:
         """
         Get a dictionary with groups as keys and neurons in each group as values.
-        
+
         Args:
             df_neurons (Optional[pd.DataFrame], optional): Dataframe of neuron metadata. Defaults to None.
             df_mice (Optional[pd.DataFrame], optional): Dataframe of mice metadata. Defaults to None.
-            
+
         Returns:
             Dict[str, np.ndarray]: Dictionary with groups as keys and neurons in each group as values.
         """
@@ -355,6 +429,8 @@ class GroupSplitter:
             df_neurons_mouse_col=self.df_neurons_mouse_col,
             df_neurons_neuron_col=self.df_neurons_neuron_col,
             map_int_to_str=self.map_int_to_str,
+            permute_neurons=self.permute_neurons,
+            equalize_neuron_numbers=self.equalize_neuron_numbers,
         )
 
     def neurons_by_mouse(
@@ -364,11 +440,11 @@ class GroupSplitter:
     ) -> Dict[str, np.ndarray]:
         """
         Get a dictionary with mouse names as keys and neurons in each mouse as values.
-        
+
         Args:
             df_neurons (Optional[pd.DataFrame], optional): Dataframe of neuron metadata. Defaults to None.
             df_mice (Optional[pd.DataFrame], optional): Dataframe of mice metadata. Defaults to None.
-            
+
         Returns:
             Dict[str, np.ndarray]: Dictionary with mouse names as keys and neurons in each mouse as values.
         """
@@ -388,6 +464,7 @@ class GroupSplitter:
             df_neurons_mouse_col=self.df_neurons_mouse_col,
             df_neurons_neuron_col=self.df_neurons_neuron_col,
             map_int_to_str=self.map_int_to_str,
+            equalize_neuron_numbers=self.equalize_neuron_numbers,
         )
 
     def traces_by_group(
@@ -399,13 +476,13 @@ class GroupSplitter:
     ) -> Dict[str, pd.DataFrame]:
         """
         Get a dictionary with groups as keys and traces in each group as values.
-        
+
         Args:
             df_traces (pd.DataFrame): Dataframe of traces.
             df_neurons (Optional[pd.DataFrame], optional): Dataframe of neuron metadata. Defaults to None.
             df_mice (Optional[pd.DataFrame], optional): Dataframe of mice metadata. Defaults to None.
             df_traces_time_col (Optional[str], optional): Name of the column with time information in traces dataframe. Defaults to None.
-            
+
         Returns:
             Dict[str, pd.DataFrame]: Dictionary with groups as keys and traces in each group as values.
         """
@@ -430,6 +507,8 @@ class GroupSplitter:
             df_neurons_mouse_col=self.df_neurons_mouse_col,
             df_traces_time_col=df_traces_time_col,
             map_int_to_str=self.map_int_to_str,
+            permute_neurons=self.permute_neurons,
+            equalize_neuron_numbers=self.equalize_neuron_numbers,
         )
 
     def traces_by_group_long(
@@ -461,4 +540,6 @@ class GroupSplitter:
             df_neurons_mouse_col=self.df_neurons_mouse_col,
             df_neurons_neuron_col=self.df_neurons_neuron_col,
             df_traces_long_neuron_col=self.df_traces_long_neuron_col,
+            permute_neurons=self.permute_neurons,
+            equalize_neuron_numbers=self.equalize_neuron_numbers,
         )
