@@ -1,6 +1,7 @@
 from .raw_preprocessors import EventPreprocessor, Preprocessor, GroupedEventPreprocessor
 from .alignment_preprocessors import AlignmentPreprocessor
 from .config import PreprocessConfig
+from .neuron_drop import NeuronDropper
 
 
 __all__ = [
@@ -9,4 +10,5 @@ __all__ = [
     "GroupedEventPreprocessor",
     "AlignmentPreprocessor",
     "PreprocessConfig",
+    "NeuronDropper",
 ]
