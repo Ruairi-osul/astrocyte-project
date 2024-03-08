@@ -14,7 +14,8 @@ class NeuronDropper:
             self.neuron_to_drop = self.neuron_to_drop.astype(str)
 
     def drop_wide(self, df_wide: pd.DataFrame) -> pd.DataFrame:
-        return df_wide.drop(columns=self.neuron_to_drop)
+        df_wide = df_wide[[c for c in df_wide.columns if c not in self.neuron_to_drop]]
+        return df_wide
 
     def __call__(self, df_traces: pd.DataFrame) -> pd.DataFrame:
         if self.copy:
