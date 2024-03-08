@@ -10,6 +10,7 @@ class NeuronDropper:
         to_str: bool = True,
     ):
         self.neuron_to_drop = neuron_to_drop
+        self.copy = copy
         if to_str:
             self.neuron_to_drop = self.neuron_to_drop.astype(str)
 
