@@ -32,6 +32,8 @@ class AlignmentPreprocessor(BasePreprocessor):
             df_traces = self.preprocess_config.trace_preprocessor_load(df_traces)
         if self.preprocess_config.trace_rotator is not None:
             df_traces = self.preprocess_config.trace_rotator(df_traces)
+        if self.preprocess_config.trace_sampler is not None:
+            df_traces = self.preprocess_config.trace_sampler(df_traces)
         return df_traces
 
     def preprocess_events(self, df_events: pd.DataFrame) -> pd.DataFrame:
