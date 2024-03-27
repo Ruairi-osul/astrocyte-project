@@ -63,3 +63,10 @@ class AlignmentPreprocessor(BasePreprocessor):
         df_traces = self.align_traces(df_traces, df_events)
         df_traces = self.preprocess_aligned_traces(df_traces)
         return df_traces
+
+
+class AverageTracePreprocessor(AlignmentPreprocessor):
+    def align_traces(
+        self, df_traces: pd.DataFrame, df_events: pd.DataFrame
+    ) -> pd.DataFrame:
+        return self.preprocess_config.aligner.average_trace(df_traces, df_events)
