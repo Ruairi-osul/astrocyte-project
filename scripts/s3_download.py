@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 
-DATA_DIR = os.environ.get("DATA_DIR", "data")
+DATA_DIR = os.environ.get("OUT_DIR", "data")
 S3_BUCKET = os.environ.get("S3_BUCKET_NAME")
 PREFIX = "dataset-03"
 S3_REGION = "us-east-1"
@@ -50,12 +50,14 @@ def main():
     local_dir = Path(DATA_DIR) / PREFIX
     local_dir.mkdir(parents=True, exist_ok=True)
 
-    downloader_parquet = S3BucketDownloader(S3_BUCKET, PREFIX, ".parquet")
-    downloader_parquet.download_files(DATA_DIR)
+    # downloader_parquet = S3BucketDownloader(S3_BUCKET, PREFIX, ".parquet")
+    # downloader_parquet.download_files(DATA_DIR)
 
-    downloader_csv = S3BucketDownloader(S3_BUCKET, PREFIX, ".csv")
-    downloader_csv.download_files(DATA_DIR)
+    # downloader_csv = S3BucketDownloader(S3_BUCKET, PREFIX, ".csv")
+    # downloader_csv.download_files(DATA_DIR)
 
+    downloader_pkl = S3BucketDownloader(S3_BUCKET, PREFIX, ".pkl")
+    downloader_pkl.download_files(DATA_DIR)
 
 if __name__ == "__main__":
     main()
